@@ -1,0 +1,7 @@
+Changes
+Copying
+Makefile.PL
+MANIFEST
+README
+t/Version.t
+lib/Net/Scan/HTTP/Server/Version.pm
