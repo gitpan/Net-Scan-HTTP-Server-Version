@@ -1,4 +1,7 @@
 Revision history for Perl extension Net-Scan-HTTP-Server-Version.
 
-0.01  Thu Apr 20 16:16:07 2006
+0.02  Apr 28 17:31:22 2006
+	- fix chomp
+
+0.01  Apr 20 16:16:07 2006
 	- first release 

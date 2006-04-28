@@ -58,9 +58,10 @@ sub scan {
 
 		close $connect; 
 
-		chomp $version;
-
-		return $version if $version;	
+		if ($version){
+			chomp $version;
+			return $version;	
+		}
 	} else {
 		if ($debug){
 			$version = "connection refused";
