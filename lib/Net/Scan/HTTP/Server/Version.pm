@@ -25,6 +25,7 @@ sub scan {
 	my $debug        = $self->debug        || 0;
 
 	my $method       = "GET";
+	my $maxlen       = 1024;
 	my $CRLF         = "\015\012";
 
 	my $connect = IO::Socket::INET->new(
@@ -33,43 +34,63 @@ sub scan {
 		Proto    => 'tcp',
 		Timeout  => $timeout
 	);
-
-	$SIG{ALRM}=sub{exit(0);};
-	alarm $timeout;
-
+	
 	my $version;
- 
+
 	if ($connect){
 
 		print $connect "$method / HTTP/$http_version$CRLF";
 		print $connect "User-Agent: $user_agent$CRLF";
 		print $connect "Host: $host$CRLF";
 		print $connect "$CRLF";
-		
-		my @lines = $connect->getlines(); 
 
-		if (@lines){
-			foreach (@lines){
-				if ($_ =~ /^Server:/){
-					(undef,$version) = split(/:/,$_);
+		$SIG{ALRM} = \&timed_out;
+		eval{
+			alarm($timeout);
+
+			$connect->recv($version,$maxlen);
+	
+			close $connect; 
+			alarm(0);
+		};
+
+		my @results = split(/\n/,$version);
+
+		my $check = 0;
+
+		if (@results){
+			my @version = grep(/^Server:/, @results);
+			foreach my $line (@version){
+				if ($line =~ /^Server:/){
+					(undef,$version) = split(/:/,$line);
+					$version =~ s/^\s+//;
+					$check = 1;
 				}
 			}
-		}
+			
+			my @version2 = grep(/^WWW-Authenticate: Basic realm/, @results);
+			foreach my $line (@version2){
+				if ($line =~ m/^WWW-Authenticate: Basic realm/){
+					$version = "cisco-IOS";	
+					$check = 1;
+				}
+			}
 
-		close $connect; 
-
-		if ($version){
-			chomp $version;
-			return $version;	
+			if ($check == 1){
+				return "$version";
+			} else{
+				return "unknown";
+			}
 		}
 	} else {
 		if ($debug){
-			$version = "connection refused";
-			return $version;
-		} else {
-			$version = "";	
+			return "connection refused";
 		}
 	}
+}
+
+sub timed_out{
+	die "timeout while connecting to server";
 }
 
 1;
@@ -86,8 +107,8 @@ Net::Scan::HTTP::Server::Version - grab HTTP server version
   my $host = $ARGV[0];
 
   my $scan = Net::Scan::HTTP::Server::Version->new({
-    host      => $host,
-    timeout   => 5,
+    host    => $host,
+    timeout => 5
   });
 
   my $results = $scan->scan;
@@ -145,11 +166,17 @@ Scan the target.
 
   $scan->scan;
 
+=head1 BUGS
+
+Parsing isn't very precise for no standard web servers answers...
+
 =head1 SEE ALSO
 
 L<LWP>
 
 LW2 L<http://www.wiretrip.net/rfp/lw.asp>
+
+nmap L<http://www.insecure.org/nmap/>
 
 =head1 AUTHOR
 

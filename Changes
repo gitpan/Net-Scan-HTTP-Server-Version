@@ -1,5 +1,8 @@
 Revision history for Perl extension Net-Scan-HTTP-Server-Version.
 
+0.03  May 16 23:09:25 2006
+	- add "$SIG{ALRM}" and grep...
+
 0.02  Apr 28 17:31:22 2006
 	- fix chomp
 
