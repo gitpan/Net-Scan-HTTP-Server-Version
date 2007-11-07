@@ -4,10 +4,9 @@ use 5.008006;
 use strict;
 use warnings;
 use base qw(Class::Accessor::Fast);
-use Carp;
 use IO::Socket;
 
-our $VERSION = '0.01';
+our $VERSION = '0.04';
 $VERSION = eval $VERSION;
 
 __PACKAGE__->mk_accessors( qw(host port timeout http_version user_agent debug));
@@ -35,7 +34,8 @@ sub scan {
 		Timeout  => $timeout
 	);
 	
-	my $version;
+	my $version = "";
+	my $powerby = "";
 
 	if ($connect){
 
@@ -47,6 +47,9 @@ sub scan {
 		$SIG{ALRM} = \&timed_out;
 		eval{
 			alarm($timeout);
+	
+			sleep 1;	
+			print $connect "$CRLF";
 
 			$connect->recv($version,$maxlen);
 	
@@ -59,25 +62,61 @@ sub scan {
 		my $check = 0;
 
 		if (@results){
-			my @version = grep(/^Server:/, @results);
-			foreach my $line (@version){
-				if ($line =~ /^Server:/){
+
+			my $line = "";
+
+			foreach $line (@results){
+				
+				if ($line =~ /^Server:/i){
 					(undef,$version) = split(/:/,$line);
 					$version =~ s/^\s+//;
 					$check = 1;
 				}
-			}
-			
-			my @version2 = grep(/^WWW-Authenticate: Basic realm/, @results);
-			foreach my $line (@version2){
+				
+				if ($line =~ /^X-Powered-By:/i){
+					(undef,$powerby) = split(/:/,$line);
+					$powerby =~ s/^\s+//;
+					$check = 1;
+				}
+	
 				if ($line =~ m/^WWW-Authenticate: Basic realm/){
 					$version = "cisco-IOS";	
+					$check = 1;
+				}
+				
+				if ($line =~ m/^WWW-Authenticate: Basic realm="IBM Network Printers"/){
+					$version = "IBM Network Printers";	
+					$check = 1;
+				}
+
+				if ($line =~ /Lexmark/i){
+					$version = "Lexmark";
+					$check = 1;
+				}
+				
+				if ($line =~ /Remote Insight/){
+					$version = "HP Remote Insight";
+					$check = 1;
+				}
+				
+				if ($line =~ /^HTTP\/1.1 405 Method Not Allowed/i){
+					$version = "Method Not Allowed";
+					$check = 1;
+				}
+			
+				if ($line =~ /^Location:/){
+					$version =~ s/^\s+//;
 					$check = 1;
 				}
 			}
 
 			if ($check == 1){
-				return "$version";
+				if ($version){
+					$version =~ s/\r|\n//g;
+					return "$version";
+				} else{
+					return "$powerby";
+				}
 			} else{
 				return "unknown";
 			}
@@ -86,6 +125,7 @@ sub scan {
 		if ($debug){
 			return "connection refused";
 		}
+		return 0;
 	}
 }
 

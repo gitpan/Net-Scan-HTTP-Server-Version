@@ -1,4 +1,4 @@
-Net-Scan-HTTP-Server-Version version 0.01
+Net-Scan-HTTP-Server-Version version 0.04
 =========================================
 
 This module permit to grab HTTP server version.
